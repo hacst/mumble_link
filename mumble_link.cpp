@@ -131,7 +131,7 @@ void set_context(const string& context) {
 }
 
 void set_identity(const wstring& identity) {
-	memcpy(lm->identity, identity.c_str(), identity.size() * sizeof(wchar_t));
+	wcsncpy(lm->identity, identity.c_str(), 256);
 }
 
 void set_camera_front(const float x, const float y, const float z) {
