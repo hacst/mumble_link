@@ -1,0 +1,17 @@
+mumble_link is a minimal python module intended for exercising
+Mumble's link positional audio plugin from python.
+
+Without a native module this wouldn't be easily possible as
+the link plugin is based on a shared memory structure and
+is available on Linux as well as on Windows.
+
+The module depends on boost python as well as boost thread.
+
+Here is how you could use mumble_link:
+>>> import mumble_link
+>>> mumble_link.setup("myplugin", "myplugin is a just a test")
+>>> mumble_link.set_context("Some\0Crazy\0Context")
+>>> mumble_link.set_identity("Not sure")
+>>> mumble_link.set_avatar_pos(1,2,3)
+...
+
