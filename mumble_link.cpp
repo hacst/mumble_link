@@ -1,9 +1,40 @@
+/* Copyright (C) 2013, Stefan Hacker <dd0t@users.sourceforge.net>
+
+   All rights reserved.
+
+   Redistribution and use in source and binary forms, with or without
+   modification, are permitted provided that the following conditions
+   are met:
+
+   - Redistributions of source code must retain the above copyright notice,
+     this list of conditions and the following disclaimer.
+   - Redistributions in binary form must reproduce the above copyright notice,
+     this list of conditions and the following disclaimer in the documentation
+     and/or other materials provided with the distribution.
+   - Neither the name of the Mumble Developers nor the names of its
+     contributors may be used to endorse or promote products derived from this
+     software without specific prior written permission.
+
+   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+   ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+   A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR
+   CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+   EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+   PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+   PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+   NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
 #include <stdint.h>
 #include <boost/python.hpp>
+#include <boost/thread.hpp>
 #include <string>
 
 using namespace std;
-using namespace boost::python;
+using namespace boost;
 
 #ifdef WIN32
 #include <windows.h>
@@ -40,8 +71,16 @@ struct LinkedMem {
 
 LinkedMem *lm = NULL;
 
-LinkedMem tmp;
+bool run_updater = true;
+thread t;
 
+void updater() {
+	while (run_updater) {
+		this_thread::sleep(posix_time::milliseconds(100));
+		lm->uiTick++;
+	}
+}
+	
 bool setup(const wstring& name, const wstring& description) {
 
 #ifdef WIN32
@@ -72,83 +111,79 @@ bool setup(const wstring& name, const wstring& description) {
 		return false;
 	}
 #endif
-	memset(&tmp, 0, sizeof(LinkedMem));
-	wcsncpy(tmp.name, name.c_str(), 256);
-	wcsncpy(tmp.description, description.c_str(), 2048);
-	tmp.uiVersion = 2;
 
+	memset(lm, 0, sizeof(LinkedMem));
+	wcsncpy(lm->name, name.c_str(), 256);
+	wcsncpy(lm->description, description.c_str(), 2048);
+	lm->uiVersion = 2;
+	t = thread(updater);
 	return true;
 }
 
+void stop() {
+	run_updater = false;
+	t.join();
+}
+
 void set_context(const string& context) {
-	memcpy(tmp.context, context.c_str(), context.size());
-	tmp.context_len = context.size();
+	memcpy(lm->context, context.c_str(), context.size());
+	lm->context_len = context.size();
 }
 
 void set_identity(const wstring& identity) {
-	memcpy(tmp.identity, identity.c_str(), identity.size() * sizeof(wchar_t));
+	memcpy(lm->identity, identity.c_str(), identity.size() * sizeof(wchar_t));
 }
 
 void set_camera_front(const float x, const float y, const float z) {
-	tmp.fCameraFront[0] = x;
-	tmp.fCameraFront[1] = y;
-	tmp.fCameraFront[2] = z;
+	lm->fCameraFront[0] = x;
+	lm->fCameraFront[1] = y;
+	lm->fCameraFront[2] = z;
 }
 
 void set_camera_top(const float x, const float y, const float z) {
-	tmp.fCameraTop[0] = x;
-	tmp.fCameraTop[1] = y;
-	tmp.fCameraTop[2] = z;
+	lm->fCameraTop[0] = x;
+	lm->fCameraTop[1] = y;
+	lm->fCameraTop[2] = z;
 }
 
 void set_camera_position(const float x, const float y, const float z) {
-	tmp.fCameraPosition[0] = x;
-	tmp.fCameraPosition[1] = y;
-	tmp.fCameraPosition[2] = z;
+	lm->fCameraPosition[0] = x;
+	lm->fCameraPosition[1] = y;
+	lm->fCameraPosition[2] = z;
 }
 
 
 void set_avatar_front(const float x, const float y, const float z) {
-	tmp.fAvatarFront[0] = x;
-	tmp.fAvatarFront[1] = y;
-	tmp.fAvatarFront[2] = z;
+	lm->fAvatarFront[0] = x;
+	lm->fAvatarFront[1] = y;
+	lm->fAvatarFront[2] = z;
 }
 
 void set_avatar_top(const float x, const float y, const float z) {
-	tmp.fAvatarTop[0] = x;
-	tmp.fAvatarTop[1] = y;
-	tmp.fAvatarTop[2] = z;
+	lm->fAvatarTop[0] = x;
+	lm->fAvatarTop[1] = y;
+	lm->fAvatarTop[2] = z;
 }
 
 void set_avatar_position(const float x, const float y, const float z) {
-	tmp.fAvatarPosition[0] = x;
-	tmp.fAvatarPosition[1] = y;
-	tmp.fAvatarPosition[2] = z;
-}
-
-bool update() {
-	if (! lm)
-		return false;
-
-	tmp.uiTick++;
-	memcpy(lm, &tmp, sizeof(LinkedMem));
-	return true;
+	lm->fAvatarPosition[0] = x;
+	lm->fAvatarPosition[1] = y;
+	lm->fAvatarPosition[2] = z;
 }
 
 BOOST_PYTHON_MODULE(mumble_link)
 {
-	def("setup", setup);
+	python::def("setup", setup);
+	python::def("stop", stop);
 	
-	def("set_camera_top", set_camera_position);
-	def("set_camera_front", set_camera_front);
-	def("set_camera_position", set_camera_position);
+	python::def("set_camera_top", set_camera_position);
+	python::def("set_camera_front", set_camera_front);
+	python::def("set_camera_position", set_camera_position);
 
-	def("set_avatar_top", set_avatar_position);
-	def("set_avatar_front", set_avatar_front);
-	def("set_avatar_position", set_avatar_position);
+	python::def("set_avatar_top", set_avatar_position);
+	python::def("set_avatar_front", set_avatar_front);
+	python::def("set_avatar_position", set_avatar_position);
 
-	def("set_context", set_context);
-	def("set_identity", set_identity);
-
-	def("update", update);
+	python::def("set_context", set_context);
+	python::def("set_identity", set_identity);
 }
