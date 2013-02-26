@@ -125,6 +125,14 @@ void stop() {
 	t.join();
 }
 
+void set_name(const wstring& name) {
+	wcsncpy(lm->name, name.c_str(), 256);
+}
+
+void set_description(const wstring& description) {
+	wcsncpy(lm->description, description.c_str(), 2048);
+}
+
 void set_context(const string& context) {
 	memcpy(lm->context, context.c_str(), context.size());
 	lm->context_len = context.size();
@@ -132,6 +140,10 @@ void set_context(const string& context) {
 
 void set_identity(const wstring& identity) {
 	wcsncpy(lm->identity, identity.c_str(), 256);
+}
+
+void set_version(const uint32_t version) {
+	lm->uiVersion = version;
 }
 
 void set_camera_front(const float x, const float y, const float z) {
@@ -175,6 +187,10 @@ BOOST_PYTHON_MODULE(mumble_link)
 {
 	python::def("setup", setup);
 	python::def("stop", stop);
+	
+	python::def("set_name", set_name);
+	python::def("set_description", set_description);
+	python::def("set_version", set_version);
 	
 	python::def("set_camera_top", set_camera_position);
 	python::def("set_camera_front", set_camera_front);
